@@ -7,7 +7,7 @@
 
 #ifndef BASE16_BUFSIZ
     #define BASE16_BUFSIZ 12000
-#elif BASE16_BUFSIZ < 2
+#elif BASE16_BUFSIZ < 1024
     #error "BAD VALUE FOR BASE16_BUFSIZ"
 #endif
 
@@ -48,6 +48,7 @@
 #define CTRL_ERROR_NONE  (0x00 << 4)
 #define CTRL_ERROR_INVAL (0x01 << 4)
 #define CTRL_ERROR_ILSEQ (0x02 << 4)
+#define CTRL_ERROR_NOBUF (0x03 << 4)
 
 #define IS_MODE(m, v) \
     (((m) & CTRL_MASK_MODE) == (v))
@@ -64,18 +65,23 @@
 
 base16_context_ref base16_create_context(void)
 {
+    base16_reg_t i;
     base16_context_ref c = (base16_context_ref)malloc(sizeof(base16_context_t) + BASE16_BUFSIZ);
     if (c != NULL) {
-        c->in_base = (base16_index_t)c + sizeof(base16_context_t);
+        c->in_base   = (base16_index_t)c + sizeof(base16_context_t);
         c->out_limit = c->in_base + (BASE16_BUFSIZ - 1);
-        c->out_base = c->out_limit - ((BASE16_BUFSIZ / 2) - 1); /* default ratio... 1/2 + 1/2 */
-        c->in_limit = c->out_base - 1;
-        c->in_ptr = c->in_base;
-        c->out_ptr = c->out_base;
-        c->char_cnt = 0;
-        c->line_cnt = 0;
-        c->line_ptr = 0;
-        c->ctrl = CTRL_MODE_NONE | CTRL_STATUS_OK | CTRL_ERROR_NONE;
+        c->out_base  = c->out_limit - ((BASE16_BUFSIZ / 2) - 1); /* default ratio... 1/2 + 1/2 */
+        c->in_limit  = c->out_base - 1;
+        c->in_last   = NULL;
+        c->in_ptr    = NULL;
+        c->out_last  = NULL;
+        c->out_ptr   = NULL;
+        c->char_cnt  = 0;
+        c->line_cnt  = 0;
+        c->line_ptr  = 0;
+        c->ctrl      = CTRL_MODE_NONE | CTRL_STATUS_OK | CTRL_ERROR_NONE;
+        for (i = 0; i < (base16_reg_t)sizeof(base16_buffer_t); i++)
+            c->buf[i] = '\0';
     }
     return c;
 }
