@@ -1,3 +1,4 @@
 # Object Files
 bin/*.o
 bin/base16
+.idea/
