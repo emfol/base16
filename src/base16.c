@@ -6,7 +6,7 @@
  */
 
 #ifndef BASE16_BUFSIZ
-    #define BASE16_BUFSIZ 12000
+    #define BASE16_BUFSIZ (2 * 4096)
 #elif BASE16_BUFSIZ < 1024
     #error "BAD VALUE FOR BASE16_BUFSIZ"
 #endif
@@ -51,10 +51,10 @@
 
 #define CTRL_ERROR_NONE  (0x00 << 4)
 #define CTRL_ERROR_MODE  (0x01 << 4)
-#define CTRL_ERROR_FRMT  (0x01 << 4)
-#define CTRL_ERROR_INVAL (0x01 << 4)
-#define CTRL_ERROR_ILSEQ (0x01 << 4)
-#define CTRL_ERROR_NOBUF (0x01 << 4)
+#define CTRL_ERROR_FRMT  (0x02 << 4)
+#define CTRL_ERROR_INVAL (0x03 << 4)
+#define CTRL_ERROR_ILSEQ (0x04 << 4)
+#define CTRL_ERROR_NOBUF (0x05 << 4)
 
 #define IS_MODE(m, v) \
     (((m) & CTRL_MASK_MODE) == (v))
@@ -131,8 +131,9 @@ base16_reg_t base16_encode(base16_context_ref c)
 
     ctrl = c->ctrl;
     if (!IS_MODE(ctrl, CTRL_MODE_ENCODE)) {
+        SET_STATUS(ctrl, CTRL_STATUS_ERROR);
         SET_ERROR(ctrl, CTRL_ERROR_MODE);
-        goto label_quit;
+        goto label_abort;
     }
 
     /* reset error data */
@@ -145,30 +146,54 @@ base16_reg_t base16_encode(base16_context_ref c)
 
     /* main loop */
     while (i_ptr <= i_lim && o_ptr <= o_lim) {
-        i_chr = *i_ptr++;
-        ADJUST_HEXDIGIT(i_chr);
+        i_chr = *i_ptr;
         if (IS_STATUS(ctrl, CTRL_STATUS_PAIR)) {
+            ADJUST_HEXDIGIT(i_chr);
             if (IS_CHAR_HEXDIGIT(i_chr)) {
-                SET_STATUS(ctrl, CTRL_STATUS_OK);
                 o_chr = (o_chr << 4) | ENCODE_HEXDIGIT(i_chr);
                 *o_ptr++ = o_chr;
+                SET_STATUS(ctrl, CTRL_STATUS_OK);
             } else {
                 SET_STATUS(ctrl, CTRL_STATUS_ERROR);
                 SET_ERROR(ctrl, CTRL_ERROR_ILSEQ);
-                /* TODO: SET_ERROR(ctrl, CTRL_ERROR_ILSEQ)
-                 * and update statistics...
-                 */
                 break;
             }
         } else if (IS_STATUS(ctrl, CTRL_STATUS_COMMENT)) {
             if (IS_CHAR_EOL(i_chr)) {
                 SET_STATUS(ctrl, CTRL_STATUS_OK);
             }
-            continue;
+        } else if (IS_STATUS(ctrl, CTRL_STATUS_OK)) {
+            if (!IS_CHAR_BLANK(i_chr)) {
+                if (IS_CHAR_COMMENT(i_chr)) {
+                    SET_STATUS(ctrl, CTRL_STATUS_COMMENT);
+                } else {
+                    ADJUST_HEXDIGIT(i_chr);
+                    if (IS_CHAR_HEXDIGIT(i_chr)) {
+                        o_chr = ENCODE_HEXDIGIT(i_chr);
+                        SET_STATUS(ctrl, CTRL_STATUS_PAIR);
+                    } else {
+                        SET_STATUS(ctrl, CTRL_STATUS_ERROR);
+                        SET_ERROR(ctrl, CTRL_ERROR_INVAL);
+                        break;
+                    }
+                }
+            }
+        } else {
+            /*
+             * @TODO: What should I do if no valid state is set?
+             */
         }
+        i_ptr++;
     }
 
-label_quit:
+    /*
+     * @TODO: Update statistics...
+     */
+
+    c->in_first = i_ptr;
+    c->out_last = o_ptr - 1;
+
+label_abort:
     c->ctrl = ctrl;
 
     return GET_ERROR_CODE(ctrl);
