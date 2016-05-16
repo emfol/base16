@@ -17,7 +17,6 @@ typedef base16_char_t *base16_index_t;
 typedef base16_char_t base16_cache_t[8];
 typedef struct base16_context {
     base16_reg_t ctrl;
-    base16_reg_t frmt;
     base16_reg_t char_cnt;
     base16_reg_t line_cnt;
     base16_reg_t line_cur;

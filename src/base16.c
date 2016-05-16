@@ -36,43 +36,51 @@
 #define ENCODE_HEXDIGIT(c) \
     ((((c) >= 'a' && (c) <= 'f') ? ((c) - 'a' + 0x0a) : ((c) - '0')) & 0x0f)
 
-#define CTRL_MASK_MODE      (0x03 << 0)
-#define CTRL_MASK_STATUS    (0x03 << 2)
-#define CTRL_MASK_ERROR     (0x07 << 4)
+#define MASK_CTRL_STATUS       (0x01 << 0)
+#define MASK_CTRL_ERROR        (0x07 << 1)
+#define MASK_CTRL_MODE         (0x03 << 4)
+#define MASK_CTRL_FLAGS        (0x07 << 6)
 
-#define CTRL_MODE_NONE      (0x00 << 0)
-#define CTRL_MODE_ENCODE    (0x01 << 0)
-#define CTRL_MODE_DECODE    (0x03 << 0)
+#define CTRL_STATUS_OK         (0x00 << 0)
+#define CTRL_STATUS_ERROR      (0x01 << 0)
 
-#define CTRL_STATUS_OK      (0x00 << 2)
-#define CTRL_STATUS_PAIR    (0x01 << 2)
-#define CTRL_STATUS_COMMENT (0x02 << 2)
-#define CTRL_STATUS_ERROR   (0x03 << 2)
+#define CTRL_ERROR_NONE        (0x00 << 1)
+#define CTRL_ERROR_FAULT       (0x01 << 1)
+#define CTRL_ERROR_INVAL       (0x03 << 1)
+#define CTRL_ERROR_ILSEQ       (0x04 << 1)
+#define CTRL_ERROR_NOBUF       (0x02 << 1)
 
-#define CTRL_ERROR_NONE     (0x00 << 4)
-#define CTRL_ERROR_MODE     (0x01 << 4)
-#define CTRL_ERROR_FRMT     (0x02 << 4)
-#define CTRL_ERROR_INVAL    (0x03 << 4)
-#define CTRL_ERROR_ILSEQ    (0x04 << 4)
-#define CTRL_ERROR_NOBUF    (0x05 << 4)
+#define CTRL_MODE_NONE         (0x00 << 4)
+#define CTRL_MODE_ENCODE       (0x01 << 4)
+#define CTRL_MODE_DECODE       (0x03 << 4)
 
-#define IS_MODE(m, v) \
-    (((m) & CTRL_MASK_MODE) == (v))
+#define CTRL_FLAGS_NONE        (0x00 << 6)
+#define CTRL_FLAGS_PAIR        (0x01 << 6)
+#define CTRL_FLAGS_COMMENT     (0x02 << 6)
 
-#define SET_MODE(m, v) \
-    ((m) = ((m) & ~CTRL_MASK_MODE) | ((v) & CTRL_MASK_MODE))
+#define IS_CTRL_STATUS(s, v) \
+    (((s) & MASK_CTRL_STATUS) == (v))
 
-#define IS_STATUS(s, v) \
-    (((s) & CTRL_MASK_STATUS) == (v))
+#define SET_CTRL_STATUS(s, v) \
+    ((s) = ((s) & ~MASK_CTRL_STATUS) | ((v) & MASK_CTRL_STATUS))
 
-#define SET_STATUS(s, v) \
-    ((s) = ((s) & ~CTRL_MASK_STATUS) | ((v) & CTRL_MASK_STATUS))
+#define GET_CTRL_ERROR(e) \
+    (((e) & MASK_CTRL_ERROR) >> 1)
 
-#define GET_ERROR_CODE(e) \
-    (((e) & CTRL_MASK_ERROR) >> 4)
+#define SET_CTRL_ERROR(e, v) \
+    ((e) = ((e) & ~MASK_CTRL_ERROR) | ((v) & MASK_CTRL_ERROR))
 
-#define SET_ERROR(e, v) \
-    ((e) = ((e) & ~CTRL_MASK_ERROR) | ((v) & CTRL_MASK_ERROR))
+#define IS_CTRL_MODE(m, v) \
+    (((m) & MASK_CTRL_MODE) == (v))
+
+#define SET_CTRL_MODE(m, v) \
+    ((m) = ((m) & ~MASK_CTRL_MODE) | ((v) & MASK_CTRL_MODE))
+
+#define IS_CTRL_FLAGS(f, v) \
+    (((f) & MASK_CTRL_FLAGS) == (v))
+
+#define SET_CTRL_FLAGS(f, v) \
+    ((f) = ((f) & ~MASK_CTRL_FLAGS) | ((v) & MASK_CTRL_FLAGS))
 
 /*
  * Implementations
@@ -94,7 +102,7 @@ base16_context_ref base16_create_context(void)
         c->char_cnt  = 0;
         c->line_cnt  = 0;
         c->line_cur  = 0;
-        c->ctrl      = CTRL_MODE_NONE | CTRL_STATUS_OK | CTRL_ERROR_NONE;
+        c->ctrl      = CTRL_STATUS_OK | CTRL_ERROR_NONE | CTRL_MODE_NONE | CTRL_FLAGS_NONE;
         for (i = 0; i < (base16_reg_t)sizeof(base16_cache_t); i++)
             c->cache[i] = '\0';
     }
@@ -127,76 +135,89 @@ base16_reg_t base16_encode(base16_context_ref c)
 
     base16_index_t i_ptr, i_lim, o_ptr, o_lim;
     base16_char_t i_chr, o_chr;
-    base16_reg_t ctrl;
+    base16_reg_t ctrl, char_cnt, line_cnt, line_cur;
 
     ctrl = c->ctrl;
-    if (!IS_MODE(ctrl, CTRL_MODE_ENCODE)) {
-        SET_STATUS(ctrl, CTRL_STATUS_ERROR);
-        SET_ERROR(ctrl, CTRL_ERROR_MODE);
+
+    if (!IS_CTRL_STATUS(ctrl, CTRL_STATUS_OK))
+        goto label_abort;
+
+    if (!IS_CTRL_MODE(ctrl, CTRL_MODE_ENCODE)) {
+        SET_CTRL_STATUS(ctrl, CTRL_STATUS_ERROR);
+        SET_CTRL_ERROR(ctrl, CTRL_ERROR_INVAL);
         goto label_abort;
     }
 
     /* reset error data */
-    SET_ERROR(ctrl, CTRL_ERROR_NONE);
+    SET_CTRL_ERROR(ctrl, CTRL_ERROR_NONE);
 
     i_ptr = c->in_first;
     i_lim = c->in_last;
     o_ptr = c->out_first;
     o_lim = c->out_last;
 
+    char_cnt = c->char_cnt;
+    line_cnt = c->line_cnt;
+    line_cur = c->line_cur;
+
     /* main loop */
     while (i_ptr <= i_lim && o_ptr <= o_lim) {
         i_chr = *i_ptr;
-        if (IS_STATUS(ctrl, CTRL_STATUS_PAIR)) {
+        /* update statistics... */
+        char_cnt++;
+        if (IS_CHAR_EOL(i_chr)) {
+            line_cnt++;
+            line_cur = 0;
+        } else line_cur++;
+        /* payload... */
+        if (IS_CTRL_FLAGS(ctrl, CTRL_FLAGS_PAIR)) {
             ADJUST_HEXDIGIT(i_chr);
             if (IS_CHAR_HEXDIGIT(i_chr)) {
                 o_chr = (o_chr << 4) | ENCODE_HEXDIGIT(i_chr);
                 *o_ptr++ = o_chr;
-                SET_STATUS(ctrl, CTRL_STATUS_OK);
+                SET_CTRL_FLAGS(ctrl, CTRL_FLAGS_NONE);
             } else {
-                SET_STATUS(ctrl, CTRL_STATUS_ERROR);
-                SET_ERROR(ctrl, CTRL_ERROR_ILSEQ);
+                SET_CTRL_STATUS(ctrl, CTRL_STATUS_ERROR);
+                SET_CTRL_ERROR(ctrl, CTRL_ERROR_ILSEQ);
                 break;
             }
-        } else if (IS_STATUS(ctrl, CTRL_STATUS_COMMENT)) {
-            if (IS_CHAR_EOL(i_chr)) {
-                SET_STATUS(ctrl, CTRL_STATUS_OK);
-            }
-        } else if (IS_STATUS(ctrl, CTRL_STATUS_OK)) {
+        } else if (IS_CTRL_FLAGS(ctrl, CTRL_FLAGS_COMMENT)) {
+            if (IS_CHAR_EOL(i_chr))
+                SET_CTRL_FLAGS(ctrl, CTRL_FLAGS_NONE);
+        } else if (IS_CTRL_FLAGS(ctrl, CTRL_FLAGS_NONE)) {
             if (!IS_CHAR_BLANK(i_chr)) {
                 if (IS_CHAR_COMMENT(i_chr)) {
-                    SET_STATUS(ctrl, CTRL_STATUS_COMMENT);
+                    SET_CTRL_FLAGS(ctrl, CTRL_FLAGS_COMMENT);
                 } else {
                     ADJUST_HEXDIGIT(i_chr);
                     if (IS_CHAR_HEXDIGIT(i_chr)) {
                         o_chr = ENCODE_HEXDIGIT(i_chr);
-                        SET_STATUS(ctrl, CTRL_STATUS_PAIR);
+                        SET_CTRL_FLAGS(ctrl, CTRL_FLAGS_PAIR);
                     } else {
-                        SET_STATUS(ctrl, CTRL_STATUS_ERROR);
-                        SET_ERROR(ctrl, CTRL_ERROR_INVAL);
+                        SET_CTRL_STATUS(ctrl, CTRL_STATUS_ERROR);
+                        SET_CTRL_ERROR(ctrl, CTRL_ERROR_ILSEQ);
                         break;
                     }
                 }
             }
         } else {
-            /*
-             * @TODO: What should I do if no valid state is set?
-             */
+            SET_CTRL_STATUS(ctrl, CTRL_STATUS_ERROR);
+            SET_CTRL_ERROR(ctrl, CTRL_ERROR_FAULT);
+            break;
         }
         i_ptr++;
     }
 
-    /*
-     * @TODO: Update statistics...
-     */
+    char_cnt = c->char_cnt;
+    line_cnt = c->line_cnt;
+    line_cur = c->line_cur;
 
     c->in_first = i_ptr;
     c->out_last = o_ptr - 1;
 
 label_abort:
     c->ctrl = ctrl;
-
-    return GET_ERROR_CODE(ctrl);
+    return GET_CTRL_ERROR(ctrl);
 
 }
 
