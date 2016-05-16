@@ -36,25 +36,25 @@
 #define ENCODE_HEXDIGIT(c) \
     ((((c) >= 'a' && (c) <= 'f') ? ((c) - 'a' + 0x0a) : ((c) - '0')) & 0x0f)
 
-#define CTRL_MASK_MODE   (0x03 << 0)
-#define CTRL_MASK_STATUS (0x03 << 2)
-#define CTRL_MASK_ERROR  (0x07 << 4)
+#define CTRL_MASK_MODE      (0x03 << 0)
+#define CTRL_MASK_STATUS    (0x03 << 2)
+#define CTRL_MASK_ERROR     (0x07 << 4)
 
-#define CTRL_MODE_NONE   (0x00 << 0)
-#define CTRL_MODE_ENCODE (0x01 << 0)
-#define CTRL_MODE_DECODE (0x03 << 0)
+#define CTRL_MODE_NONE      (0x00 << 0)
+#define CTRL_MODE_ENCODE    (0x01 << 0)
+#define CTRL_MODE_DECODE    (0x03 << 0)
 
 #define CTRL_STATUS_OK      (0x00 << 2)
 #define CTRL_STATUS_PAIR    (0x01 << 2)
 #define CTRL_STATUS_COMMENT (0x02 << 2)
 #define CTRL_STATUS_ERROR   (0x03 << 2)
 
-#define CTRL_ERROR_NONE  (0x00 << 4)
-#define CTRL_ERROR_MODE  (0x01 << 4)
-#define CTRL_ERROR_FRMT  (0x02 << 4)
-#define CTRL_ERROR_INVAL (0x03 << 4)
-#define CTRL_ERROR_ILSEQ (0x04 << 4)
-#define CTRL_ERROR_NOBUF (0x05 << 4)
+#define CTRL_ERROR_NONE     (0x00 << 4)
+#define CTRL_ERROR_MODE     (0x01 << 4)
+#define CTRL_ERROR_FRMT     (0x02 << 4)
+#define CTRL_ERROR_INVAL    (0x03 << 4)
+#define CTRL_ERROR_ILSEQ    (0x04 << 4)
+#define CTRL_ERROR_NOBUF    (0x05 << 4)
 
 #define IS_MODE(m, v) \
     (((m) & CTRL_MASK_MODE) == (v))
