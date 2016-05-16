@@ -10,7 +10,7 @@ endif
 $(TARGET): bin/main.o bin/base16.o
 	$(CC) -o $@ bin/main.o bin/base16.o
 
-bin/main.o: src/main.c
+bin/main.o: src/main.c src/base16.h
 	$(CC) $(CFLAGS) -c src/main.c -o $@
 
 bin/base16.o: src/base16.h src/base16.c
