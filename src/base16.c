@@ -208,10 +208,12 @@ base16_reg_t base16_encode(base16_context_ref c)
         i_ptr++;
     }
 
-    char_cnt = c->char_cnt;
-    line_cnt = c->line_cnt;
-    line_cur = c->line_cur;
+    /* update statistics before exit... */
+    c->char_cnt = char_cnt;
+    c->line_cnt = line_cnt;
+    c->line_cur = line_cur;
 
+    /* update segment addresses... */
     c->in_start = i_ptr;
     c->out_end = o_ptr - 1;
 
