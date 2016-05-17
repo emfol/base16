@@ -23,13 +23,13 @@ typedef struct base16_context {
     /* input */
     base16_index_t in_base;   /* address of first available char */
     base16_index_t in_limit;  /* address of last available char */
-    base16_index_t in_first;  /* address of first valid char */
-    base16_index_t in_last;   /* address of last valid char */
+    base16_index_t in_start;  /* address of start of segment */
+    base16_index_t in_end;    /* address of end of segment */
     /* output */
     base16_index_t out_base;  /* address of first available char */
     base16_index_t out_limit; /* address of last available char */
-    base16_index_t out_first; /* address of first valid char */
-    base16_index_t out_last;  /* address of last valid char */
+    base16_index_t out_start; /* address of start of segment */
+    base16_index_t out_end;   /* address of end of segment */
     base16_cache_t cache;
 } base16_context_t;
 typedef base16_context_t *base16_context_ref;

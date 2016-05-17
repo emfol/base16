@@ -95,10 +95,10 @@ base16_context_ref base16_create_context(void)
         c->out_limit = c->in_base + (BASE16_BUFSIZ - 1);
         c->out_base  = c->out_limit - ((BASE16_BUFSIZ / 2) - 1); /* default ratio... 1/2 + 1/2 */
         c->in_limit  = c->out_base - 1;
-        c->in_first  = NULL;
-        c->in_last   = NULL;
-        c->out_first = NULL;
-        c->out_last  = NULL;
+        c->in_start  = NULL;
+        c->in_end    = NULL;
+        c->out_start = NULL;
+        c->out_end   = NULL;
         c->char_cnt  = 0;
         c->line_cnt  = 0;
         c->line_cur  = 0;
@@ -151,10 +151,10 @@ base16_reg_t base16_encode(base16_context_ref c)
     /* reset error data */
     SET_CTRL_ERROR(ctrl, CTRL_ERROR_NONE);
 
-    i_ptr = c->in_first;
-    i_lim = c->in_last;
-    o_ptr = c->out_first;
-    o_lim = c->out_last;
+    i_ptr = c->in_start;
+    i_lim = c->in_end;
+    o_ptr = c->out_start;
+    o_lim = c->out_end;
 
     char_cnt = c->char_cnt;
     line_cnt = c->line_cnt;
@@ -212,8 +212,8 @@ base16_reg_t base16_encode(base16_context_ref c)
     line_cnt = c->line_cnt;
     line_cur = c->line_cur;
 
-    c->in_first = i_ptr;
-    c->out_last = o_ptr - 1;
+    c->in_start = i_ptr;
+    c->out_end = o_ptr - 1;
 
 label_abort:
     c->ctrl = ctrl;

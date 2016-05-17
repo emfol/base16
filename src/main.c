@@ -17,11 +17,11 @@ int main(void)
 
     printf(
         "[ context address, context size, integrity ] -> [ 0x%lx, %lu (0x%lx), (0x%lx) ]\n"
-        "[ in_base, in_limit, in_first, in_last ] -> [ 0x%lx, 0x%lx, 0x%lx, 0x%lx ]\n"
-        "[ out_base, out_limit, out_first, out_last ] -> [ 0x%lx, 0x%lx, 0x%lx, 0x%lx ]\n",
+        "[ in_base, in_limit, in_start, in_end ] -> [ 0x%lx, 0x%lx, 0x%lx, 0x%lx ]\n"
+        "[ out_base, out_limit, out_start, out_end ] -> [ 0x%lx, 0x%lx, 0x%lx, 0x%lx ]\n",
         (unsigned long)ctx, sizeof(base16_context_t), sizeof(base16_context_t), (unsigned long)result,
-        (unsigned long)ctx->in_base, (unsigned long)ctx->in_limit, (unsigned long)ctx->in_first, (unsigned long)ctx->in_last,
-        (unsigned long)ctx->out_base, (unsigned long)ctx->out_limit, (unsigned long)ctx->out_first, (unsigned long)ctx->out_last
+        (unsigned long)ctx->in_base, (unsigned long)ctx->in_limit, (unsigned long)ctx->in_start, (unsigned long)ctx->in_end,
+        (unsigned long)ctx->out_base, (unsigned long)ctx->out_limit, (unsigned long)ctx->out_start, (unsigned long)ctx->out_end
     );
 
     /* release memory... */
